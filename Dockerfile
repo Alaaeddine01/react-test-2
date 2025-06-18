@@ -1,31 +1,28 @@
-# Étape 1 : Build avec Node 22
-FROM node:22 AS builder
+# Étape 1 : Build de l'app React avec Vite
+FROM node:22-alpine AS build
 
-# Définir le dossier de travail
 WORKDIR /app
 
-# Copier les fichiers nécessaires
+# Copier package.json et package-lock.json (ou yarn.lock)
 COPY package*.json ./
-COPY vite.config.* ./
-COPY . .
 
 # Installer les dépendances
 RUN npm install
 
-# Construire l'application pour la production
+# Copier tout le reste des fichiers
+COPY . .
+
+# Build de l'app pour la production
 RUN npm run build
 
-# Étape 2 : Utiliser une image nginx pour servir les fichiers statiques
+# Étape 2 : Servir l'app avec un serveur Nginx léger
 FROM nginx:alpine
 
-# Copier les fichiers build dans le répertoire nginx
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Copier le build de Vite vers le dossier Nginx
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# Supprimer la config nginx par défaut et ajouter la tienne (optionnel)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Exposer le port
+# Exposer le port 80
 EXPOSE 80
 
-# Lancer nginx
+# Démarrer Nginx en premier plan
 CMD ["nginx", "-g", "daemon off;"]
